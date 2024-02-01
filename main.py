@@ -4,8 +4,17 @@ from tkinter import ttk
 # Global variables to store ranking data
 individual_ranking_data = []
 team_ranking_data = []
+
+#Storing team and individuals into dict and list(Array) and tournament for future ranking and results
 individuals = []
 teams = {}
+tournaments = []
+current_tournament_events = []
+team_ranking_data = {}
+
+#Max amount of teams and individuals
+MAX_TEAMS = 5
+MAX_INDIVIDUALS = 20
 
 def open_tournament_setup():
     setup_window = tk.Toplevel(window)
@@ -45,16 +54,25 @@ def open_tournament_setup():
     sporting_event_button.pack()
 
     def add_event_to_list(event_name, event_type_selected):
-        # insert the new event
-        event_table.insert('', 'end', values=(event_name, event_type_selected))
-        # clear the data
-        name_entry.delete(0, 'end')
-        description_text.delete('1.0', tk.END)
-
+        # Insert the new event into the current tournament
+        current_tournament = tournaments[-1] if tournaments else None
+        if current_tournament:
+            current_tournament['events'].append({
+                'name': event_name,
+                'type': event_type_selected,
+            })
+            current_tournament_events.append({
+                'name': event_name,
+                'type': event_type_selected,
+            })  # Add to the list of current events
+            # Insert the new event into the event list table
+            event_table.insert('', 'end', values=(event_name, event_type_selected))
+            # Clear the data
+            name_entry.delete(0, 'end')
+            description_text.delete('1.0', tk.END)
 
     finish_button = tk.Button(setup_window, text="Finish", command=lambda: setup_window.destroy())
     finish_button.pack(pady=20)
-
 
     tk.Label(setup_window, text="Event List", font=('Helvetica', 14)).pack()
 
@@ -70,35 +88,45 @@ def open_tournament_setup():
 
     event_table.pack()
 
+    # Create a new tournament and add it to the tournaments list
+    tournaments.append({
+        'name': '',
+        'description': '',
+        'events': [],
+    })
+
+    # Update the event list table with current events
+    for event in current_tournament_events:
+        event_table.insert('', 'end', values=(event['name'], event['type']))
+
 def open_individual_ranking():
     ranking_window = tk.Toplevel(window)
     ranking_window.title("Individual Ranking Entry")
 
     tk.Label(ranking_window, text="Individual Ranking", font=('Helvetica', 18, 'bold')).pack(pady=10)
 
-    #main frame 
+    # main frame
     main_frame = tk.Frame(ranking_window)
     main_frame.pack(fill=tk.BOTH, expand=1)
 
     my_canvas = tk.Canvas(main_frame)
     my_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=1)
 
-    #scrollbar
+    # scrollbar
     my_scrollbar = ttk.Scrollbar(main_frame, orient=tk.VERTICAL, command=my_canvas.yview)
     my_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
- 
     my_canvas.configure(yscrollcommand=my_scrollbar.set)
     my_canvas.bind('<Configure>', lambda e: my_canvas.configure(scrollregion=my_canvas.bbox("all")))
 
     second_frame = tk.Frame(my_canvas)
 
-    #new frame 
+    # new frame
     my_canvas.create_window((0, 0), window=second_frame, anchor="nw")
 
-    #entry widgets for individual rankings
-    entries = {} 
-    for i in range(1, 21):  #20 individual players
+    # entry widgets for individual rankings
+    entries = {}
+    for i in range(1, 21):  # 20 individual players
         player_label = tk.Label(second_frame, text=f"Player {i}", anchor="w")
         player_label.grid(row=i, column=0, padx=10, pady=5, sticky="w")
 
@@ -117,52 +145,42 @@ def open_individual_ranking():
 
     # Save button
     save_button = tk.Button(ranking_window, text="Save Ranking", command=save_individual_ranking)
-    save_button.pack(pady=10)
+    save_button.pack()
 
 def open_team_ranking():
     ranking_window = tk.Toplevel(window)
     ranking_window.title("Team Ranking Entry")
 
-    tk.Label(ranking_window, text="Team Ranking", font=('Helvetica', 18, 'bold')).pack(pady=10)
+    tk.Label(ranking_window, text="Select Event:").pack()
 
-    #scrolling region to hold the rankings
-    canvas = tk.Canvas(ranking_window)
-    scrollbar = ttk.Scrollbar(ranking_window, orient="vertical", command=canvas.yview)
-    scrollable_frame = ttk.Frame(canvas)
+    # Make sure current_tournament_events is available and populated with the events
+    event_names = [event['name'] for event in current_tournament_events]
+    selected_event = tk.StringVar(ranking_window)
+    if event_names:
+        selected_event.set(event_names[0])  # Set the first event as default
+        event_menu = tk.OptionMenu(ranking_window, selected_event, *event_names)
+        event_menu.pack()
+    else:
+        tk.Label(ranking_window, text="No events available.").pack()
+        return  # Exit the function if there are no events
 
-    scrollable_frame.bind(
-        "<Configure>",
-        lambda e: canvas.configure(
-            scrollregion=canvas.bbox("all")
-        )
-    )
-
-    canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-    canvas.configure(yscrollcommand=scrollbar.set)
-
-    canvas.pack(side="left", fill="both", expand=True)
-    scrollbar.pack(side="right", fill="y")
-
-    # Dictionary to store entry widgets for team rankings
+    # Entry for team rankings
     entries = {}
-    for i in range(1, 5):  # Assuming 4 teams
-        tk.Label(scrollable_frame, text=f"Team {i}", anchor="w").grid(row=i, column=0, padx=10, pady=5, sticky="w")
-        entry = tk.Entry(scrollable_frame)
-        entry.grid(row=i, column=1, padx=10, pady=5, sticky="ew")
-        entries[f"Team {i}"] = entry
+    for team_name in teams:
+        tk.Label(ranking_window, text=team_name).pack()
+        entry = tk.Entry(ranking_window)
+        entry.pack()
+        entries[team_name] = entry
 
-    #save button
-    def save_team_ranking():
-
-        ranking = {}
-        for i in range(1, 5):  #4 teams
-            team = f"Team {i}"
-            ranking[team] = entries[team].get()
-        team_ranking_data.append(ranking)
+    def save_rankings():
+        event = selected_event.get()
+        rankings = {team: entry.get() for team, entry in entries.items()}
+        team_ranking_data[event] = rankings
+        # After saving, you might want to update some GUI elements or close the window
         ranking_window.destroy()
 
-    save_button = tk.Button(ranking_window, text="Save Team Ranking", command=save_team_ranking)
-    save_button.pack(pady=10)
+    save_button = tk.Button(ranking_window, text="Save Rankings", command=save_rankings)
+    save_button.pack()
 
 def open_results_individual():
     individual_results_window = tk.Toplevel(window)
@@ -217,68 +235,104 @@ def input_player_names():
     input_window = tk.Toplevel(window)
     input_window.title("Input Player Names")
 
-    tk.Label(input_window, text="Enter player names, one per line:").pack()
-    text_area = tk.Text(input_window, height=20, width=50)
-    text_area.pack()
+    tk.Label(input_window, text="Enter team names, one per line:").pack()
+    team_text_area = tk.Text(input_window, height=5, width=50)
+    team_text_area.pack()
+
+    tk.Label(input_window, text="Enter individual competitor names, one per line:").pack()
+    individual_text_area = tk.Text(input_window, height=5, width=50)
+    individual_text_area.pack()
 
     def process_names():
-        names = text_area.get("1.0", tk.END).strip().split('\n')
-        current_team = 'A'  
-        team_count = 0  
-        
-        for name in names:
-            if name:  # ONLY non-empty names
-                individual_id = len(individuals) + 1  
-                individuals.append({'id': individual_id, 'name': name, 'team': f'Team {current_team}'})
-                
-  
-                team_count += 1
-                if team_count > 5:
-           
-                    current_team = chr(ord(current_team) + 1)
-                    team_count = 1
+        team_names = team_text_area.get("1.0", tk.END).strip().split('\n')
+        individual_names = individual_text_area.get("1.0", tk.END).strip().split('\n')
 
-            
-                teams.setdefault(f'Team {current_team}', []).append(name)
+        if len(teams) + len(team_names) > MAX_TEAMS:
+            tk.messagebox.showerror("Error", f"Maximum number of teams ({MAX_TEAMS}) reached.")
+            input_window.destroy()
+            return
+
+        if len(individuals) + len(individual_names) > MAX_INDIVIDUALS:
+            tk.messagebox.showerror("Error", f"Maximum number of individuals ({MAX_INDIVIDUALS}) reached.")
+            input_window.destroy()
+            return
+
+        for name in team_names:
+            if name:
+                teams[name] = [] 
+
+        for name in individual_names:
+            if name and len(individuals) < MAX_INDIVIDUALS:
+                individuals.append(name)
 
         input_window.destroy()
-        display_individuals_and_teams() 
+        display_individuals_and_teams()
 
     tk.Button(input_window, text="Submit", command=process_names).pack()
+
 
 def display_individuals_and_teams():
     display_window = tk.Toplevel(window)
     display_window.title("Individuals and Teams")
 
-    #display individuals
-    individuals_tree = ttk.Treeview(display_window, columns=('Individual ID', 'Individual Name', 'Team'))
-    individuals_tree.heading('#1', text='Individual ID')
-    individuals_tree.heading('#2', text='Individual Name')
-    individuals_tree.heading('#3', text='Team')
-    individuals_tree.pack()
+    # Display individuals
+    individuals_tree = tk.LabelFrame(display_window, text="Individuals")
+    individuals_tree.pack(padx=10, pady=10)
 
-    #display teams
-    teams_tree = ttk.Treeview(display_window, columns=('Team', 'Members'))
-    teams_tree.heading('#1', text='Team')
-    teams_tree.heading('#2', text='Members')
-    teams_tree.pack()
+    for i, individual in enumerate(individuals, start=1):
+        tk.Label(individuals_tree, text=f"Individual {i}: {individual}").pack(anchor="w")
 
-    for individual in individuals:
-        individuals_tree.insert('', 'end', values=(individual['id'], individual['name'], individual['team']))
+    # Display teams
+    teams_frame = tk.LabelFrame(display_window, text="Teams")
+    teams_frame.pack(padx=10, pady=10)
 
     for team, members in teams.items():
+        members_str = ", ".join(members) if members else "No members"
+        tk.Label(teams_frame, text=f"Team: {team} - Members: {members_str}").pack(anchor="w")
 
-        first_member_id = individuals[next(i for i, x in enumerate(individuals) if x['name'] == members[0])]['id']
-        teams_tree.insert('', 'end', iid=first_member_id, values=(team, ', '.join(members)))
+def open_manage_teams():
+    manage_teams_window = tk.Toplevel(window)
+    manage_teams_window.title("Manage Teams")
 
-    teams_tree.pack()
-    teams_tree.view('iid', '#0', sort_by='num')
+    tk.Label(manage_teams_window, text="Select a Team to Add Players:").pack()
 
+    # Create a listbox to display teams
+    teams_listbox = tk.Listbox(manage_teams_window)
+    teams_listbox.pack()
+
+    # Populate the listbox with existing teams
+    for team in teams:
+        teams_listbox.insert(tk.END, team)
+
+    def add_players_to_team():
+        selected_team_index = teams_listbox.curselection()
+        if selected_team_index:
+            selected_team = teams_listbox.get(selected_team_index[0])  # Get the selected team
+            selected_players = [player for player, var in player_checkboxes.items() if var.get()]
+
+            # Add selected players to the selected team
+            teams[selected_team].extend(selected_players)
+
+            # Update the display or save the data as needed
+
+            # Clear player selection
+            for var in player_checkboxes.values():
+                var.set(False)
+
+    # Create checkboxes for available players
+    player_checkboxes = {}
+    for player in individuals:
+        var = tk.BooleanVar()
+        checkbox = tk.Checkbutton(manage_teams_window, text=player, variable=var)
+        checkbox.pack()
+        player_checkboxes[player] = var
+
+    tk.Button(manage_teams_window, text="Add Players to Team", command=add_players_to_team).pack()
 
 # main window setup
 window = tk.Tk()
 window.title("Scoring System")
-window.geometry("850x650")  # Adjust the size as necessary to fit content
+window.geometry("900x750")  # Adjust the size as necessary to fit content
 
 # menu frame
 main_menu_frame = tk.Frame(window, bg="white")
@@ -289,8 +343,11 @@ start_button = tk.Button(main_menu_frame, text="Start New Tournament", width=20,
                          command=open_tournament_setup)
 start_button.pack(pady=10)
 
-input_names_button = tk.Button(main_menu_frame, text="Input Player Names",width=20, height=2, command=input_player_names)
+input_names_button = tk.Button(main_menu_frame, text="Input Player and Teams ",width=20, height=2, command=input_player_names)
 input_names_button.pack(pady=10)
+
+manage_teams_button = tk.Button(main_menu_frame, text="Manage Teams", width=20, height=2, command=open_manage_teams)
+manage_teams_button.pack(pady=10)
 
 team_ranking_button = tk.Button(main_menu_frame, text="Team Ranking", width=20, height=2, command=open_team_ranking)
 team_ranking_button.pack(pady=10)
@@ -305,9 +362,11 @@ individual_results_button = tk.Button(main_menu_frame, text="Results by Event (I
                                       command=open_results_individual)
 individual_results_button.pack(pady=10)
 
+
 teams_results_button = tk.Button(main_menu_frame, text="Results by Event (Teams)", width=20, height=2,
                                 command=open_results_teams)
 teams_results_button.pack(pady=10)
+
 
 
 # Run the main loop
