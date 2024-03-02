@@ -9,6 +9,7 @@ team_ranking_data = []
 #store individuals and teams
 individuals = []
 teams = {}
+individual_event_registrations = {} 
 
 #store tournament data
 tournaments = []
@@ -24,22 +25,85 @@ rank_points = {
     'R0': 0  
 }
 
+team_sport_points = {'Win': 0, 'Draw': 0, 'Lose': 0}
+ranked_event_points = {'R1': 0, 'R2': 0, 'R3': 0, 'R4': 0, 'R5': 0}
+
+
 #max amount of teams and individuals
 MAX_TEAMS = 4
 MAX_INDIVIDUALS = 20 
+
+# func to set up the dynamic point systems
+def set_points_system():
+    points_window = tk.Toplevel(window)
+    points_window.title("Set Points System")
+
+    guideline_text = ("Enter the points for each outcome in team sports and ranks in ranked events.\n"
+                      "For example, enter how many points a Win, Draw, or Loss should be worth, and\n"
+                      "how many points each rank (R1, R2, etc.) should receive.")
+    guideline_label = tk.Label(points_window, text=guideline_text, justify=tk.LEFT)
+    guideline_label.pack(pady=10)
+
+    # entry fields for team sports points
+    team_points_entries = {}
+    for outcome in ['Win', 'Draw', 'Lose']:
+        frame = tk.Frame(points_window)
+        frame.pack(padx=10, pady=5, fill=tk.X)
+        tk.Label(frame, text=f"Points for {outcome}: ", width=15, anchor='w').pack(side=tk.LEFT)
+        points_entry = tk.Entry(frame, width=5)
+        points_entry.pack(side=tk.LEFT)
+        team_points_entries[outcome] = points_entry
+
+    tk.Label(points_window, text="Set Points for Ranked Events", font=('Helvetica', 14, 'bold')).pack(pady=10)
+
+    # entry fields for ranked events points
+    ranked_points_entries = {}
+    for rank in ['R1', 'R2', 'R3', 'R4', 'R5']:
+        frame = tk.Frame(points_window)
+        frame.pack(padx=10, pady=5, fill=tk.X)
+        tk.Label(frame, text=f"Points for {rank}: ", width=15, anchor='w').pack(side=tk.LEFT)
+        points_entry = tk.Entry(frame, width=5)
+        points_entry.pack(side=tk.LEFT)
+        ranked_points_entries[rank] = points_entry
+
+    def save_points():
+        # save points for team sports
+        for outcome, entry in team_points_entries.items():
+            try:
+                team_sport_points[outcome] = int(entry.get())
+            except ValueError:
+                tk.messagebox.showerror("Error", f"Invalid entry for {outcome}. Please enter a number.")
+                return
+        # save points for ranked events
+        for rank, entry in ranked_points_entries.items():
+            try:
+                ranked_event_points[rank] = int(entry.get())
+            except ValueError:
+                tk.messagebox.showerror("Error", f"Invalid entry for {rank}. Please enter a number.")
+                return
+        points_window.destroy()
+
+    save_button = tk.Button(points_window, text="Save Points", command=save_points)
+    save_button.pack(pady=10)
 
 #func to setup a tournament
 def open_tournament_setup():
     setup_window = tk.Toplevel(window)
     setup_window.title("Initialize New Tournament")
 
-    tk.Label(setup_window, text="Tournament Setup", font=('Helvetica', 18, 'bold')).pack(pady=20)
+    guideline_text = ("To start a new tournament, enter the tournament name and a brief description.\n"
+                      "Choose whether it's an 'Individual' or 'Team' event type.\n"
+                      "Select the ranking type for the events and add them to your tournament.\n"
+                      "Press 'Finish' once all events are added.")
+    guideline_label = tk.Label(setup_window, text=guideline_text, justify=tk.LEFT)
+    guideline_label.pack(pady=10)
+
+    tk.Label(setup_window, text="Tournament Setup", font=('Helvetica', 18, 'bold')).pack(pady=10)
 
     event_type = tk.StringVar()
-    tk.Radiobutton(setup_window, text="Individual Events", variable=event_type, value="individual").pack()
-    tk.Radiobutton(setup_window, text="Team Events", variable=event_type, value="team").pack()
+    tk.Radiobutton(setup_window, text="Individual Events", variable=event_type, value="Individual").pack()
+    tk.Radiobutton(setup_window, text="Team Events", variable=event_type, value="Team").pack()
 
-    # entry fields for name and description
     tk.Label(setup_window, text="Name").pack()
     name_entry = tk.Entry(setup_window)
     name_entry.pack()
@@ -48,66 +112,76 @@ def open_tournament_setup():
     description_text = tk.Text(setup_window, height=5, width=40)
     description_text.pack()
 
-    # button to add Academic events
-    def add_academic_event():
-        event_name = name_entry.get()
-        event_type_selected = "Academic"
-        add_event_to_list(event_name, event_type_selected)
+    ranking_type = tk.StringVar()
+    ranking_type_dropdown = ttk.Combobox(setup_window, textvariable=ranking_type, values=("Win/Lose/Draw", "Ranked"), state="readonly")
+    ranking_type_dropdown.pack()
+    ranking_type.set("Win/Lose/Draw")
 
-    academic_event_button = tk.Button(setup_window, text="Add Academic Event", command=add_academic_event)
-    academic_event_button.pack()
+    def add_event_to_list(event_name, event_type_selected, ranking_type_selected, event_for):
+        if len(current_tournament_events) >= 5:
+            tk.messagebox.showerror("Error", "Cannot add more than 5 events to the tournament.")
+            return
 
-    # button to add Sporting events
-    def add_sporting_event():
-        event_name = name_entry.get()
-        event_type_selected = "Sporting"
-        add_event_to_list(event_name, event_type_selected)
-
-    sporting_event_button = tk.Button(setup_window, text="Add Sporting Event", command=add_sporting_event)
-    sporting_event_button.pack()
-
-    def add_event_to_list(event_name, event_type_selected):
-        # insert the new event into the current tournament
         current_tournament = tournaments[-1] if tournaments else None
         if current_tournament:
+            if not event_name.strip():
+                tk.messagebox.showerror("Error", "Event name cannot be empty.")
+                return
+            if any(event['name'] == event_name for event in current_tournament['events']):
+                tk.messagebox.showerror("Error", f"An event with the name '{event_name}' already exists in the tournament.")
+                return
+
             current_tournament['events'].append({
-            'name': event_name,
-            'type': event_type_selected,
-            'for': event_type.get() 
-                })
+                'name': event_name,
+                'type': event_type_selected,
+                'ranking_type': ranking_type_selected,
+                'for': event_for
+            })
             current_tournament_events.append({
                 'name': event_name,
                 'type': event_type_selected,
-            }) 
-            # insert the new event into the event list table
-            event_table.insert('', 'end', values=(event_name, event_type_selected))
+                'ranking_type': ranking_type_selected,
+                'for': event_for
+            })
+            event_table.insert('', 'end', values=(event_name, event_type_selected, ranking_type_selected, event_for))
+
             name_entry.delete(0, 'end')
             description_text.delete('1.0', tk.END)
+
+    academic_event_button = tk.Button(setup_window, text="Add Academic Event", command=lambda: add_event_to_list(name_entry.get(), "Academic", ranking_type.get(), event_type.get()))
+    academic_event_button.pack()
+
+    sporting_event_button = tk.Button(setup_window, text="Add Sporting Event", command=lambda: add_event_to_list(name_entry.get(), "Sporting", ranking_type.get(), event_type.get()))
+    sporting_event_button.pack()
 
     finish_button = tk.Button(setup_window, text="Finish", command=lambda: setup_window.destroy())
     finish_button.pack(pady=20)
 
     tk.Label(setup_window, text="Event List", font=('Helvetica', 14)).pack()
 
-    #the event list table
-    columns = ('#1', '#2')
+    columns = ('#1', '#2', '#3', '#4')
     event_table = ttk.Treeview(setup_window, columns=columns, show='headings')
     event_table.heading('#1', text='Event Name')
     event_table.heading('#2', text='Event Type')
-
+    event_table.heading('#3', text='Ranking Type')
+    event_table.heading('#4', text='Individual/Team')
     event_table.column('#1', width=120, anchor='center')
     event_table.column('#2', width=120, anchor='center')
-
+    event_table.column('#3', width=120, anchor='center')
+    event_table.column('#4', width=120, anchor='center')
     event_table.pack()
 
-    tournaments.append({
-        'name': '',
-        'description': '',
-        'events': [],
-    })
+    # append a new tournament dictionary if this is a new tournament
+    if not tournaments:
+        tournaments.append({
+            'name': '',
+            'description': '',
+            'events': []
+        })
 
+    # populate the event table with existing events if there are any
     for event in current_tournament_events:
-        event_table.insert('', 'end', values=(event['name'], event['type']))
+        event_table.insert('', 'end', values=(event['name'], event['type'], event.get('ranking_type', 'N/A'), event.get('for', 'N/A')))
 
 #func for ranking for individuals
 def open_individual_ranking():
@@ -136,7 +210,9 @@ def open_individual_ranking():
     event_dropdown = ttk.Combobox(second_frame, textvariable=selected_event, values=event_names, state="readonly")
     event_dropdown.grid(row=0, column=1, padx=10, pady=5, sticky="ew")
     if event_names:
-        selected_event.set(event_names[0])
+        selected_event.set(event_names[0])  
+    else:
+        event_dropdown['state'] = 'disabled'  # disable if no events
 
     ranking_entries = []
     for i, individual in enumerate(individuals, start=1):
@@ -149,16 +225,18 @@ def open_individual_ranking():
 
     # func to save rankings and points
     def save_individual_ranking():
-        event = selected_event.get()
-        for individual, rank_var in ranking_entries:
-            rank = rank_var.get()
-            points = assign_points(rank)
-            individual_ranking_data.append({
-            'name': individual,
-            'event': event,
-            'rank': rank,
-            'points': points
-            })
+        event_name = selected_event.get()
+        event_info = next((e for e in current_tournament_events if e['name'] == event_name), None)
+        if event_info:
+            for individual, rank_var in ranking_entries:
+                rank = rank_var.get()
+                points = assign_points(event_info['type'], rank)  # Use event type to assign points
+                individual_ranking_data.append({
+                    'name': individual,
+                    'event': event_name,
+                    'rank': rank,
+                    'points': points
+                })
         
         
         ranking_window.destroy()
@@ -196,7 +274,10 @@ def open_team_ranking():
     event_dropdown = ttk.Combobox(second_frame, textvariable=selected_event, values=event_names, state="readonly")
     event_dropdown.grid(row=0, column=1, padx=10, pady=5, sticky="ew")
     if event_names:
-        selected_event.set(event_names[0])
+        selected_event.set(event_names[0])  
+    else:
+        event_dropdown['state'] = 'disabled'  # disable if no events
+
 
     # entry widgets for team rankings
     ranking_entries = []
@@ -227,8 +308,13 @@ def open_team_ranking():
     my_canvas.config(scrollregion=my_canvas.bbox("all"))
 
 # convert rank to points func
-def assign_points(rank):
-    return rank_points.get(rank, 0)
+def assign_points(event_type, rank):
+    if event_type == 'team_sport':
+        return team_sport_points.get(rank, 0)
+    elif event_type == 'ranked_event':
+        return ranked_event_points.get(rank, 0)
+    else:
+        return rank_points.get(rank, 0)  
 
 #func to open results of individuals
 def open_results_individual():
@@ -276,6 +362,48 @@ def open_results_teams():
         teams_results_table.insert('', 'end', values=(ranking['team'], ranking['event'], ranking['points']))
 
     teams_results_table.pack()
+
+#func to assigned individuals to specific event
+def assign_individuals_to_events():
+    assignment_window = tk.Toplevel(window)
+    assignment_window.title("Assign Individuals to Events")
+
+    tk.Label(assignment_window, text="Select Individual:").pack()
+    individual_var = tk.StringVar()
+    individual_dropdown = ttk.Combobox(assignment_window, textvariable=individual_var, values=individuals, state="readonly")
+    individual_dropdown.pack()
+
+    tk.Label(assignment_window, text="Select Event(s):").pack()
+    event_vars = {}
+    for event in current_tournament_events:
+        var = tk.BooleanVar()
+        tk.Checkbutton(assignment_window, text=event['name'], variable=var).pack()
+        event_vars[event['name']] = var
+
+    def save_assignments():
+        selected_individual = individual_var.get()
+        selected_events = [event for event, var in event_vars.items() if var.get()]
+
+        # check if the individual is already registered for 5 events
+        if selected_individual in individual_event_registrations:
+            if len(individual_event_registrations[selected_individual]) + len(selected_events) > 5:
+                tk.messagebox.showerror("Error", f"Cannot assign {selected_individual} to more than 5 events.")
+                return
+            else:
+                # add to existing registrations if under 5
+                individual_event_registrations[selected_individual].extend(selected_events)
+        else:
+            if len(selected_events) > 5:
+                tk.messagebox.showerror("Error", f"Cannot assign {selected_individual} to more than 5 events.")
+                return
+            else:
+                # create new registration if under 5
+                individual_event_registrations[selected_individual] = selected_events
+
+        tk.messagebox.showinfo("Success", f"{selected_individual} has been assigned to selected events.")
+        assignment_window.destroy()
+
+    tk.Button(assignment_window, text="Save Assignments", command=save_assignments).pack()
 
 #func to input players for individuals section and names of teams(to future management in "Manage Team")
 def input_player_names():
@@ -345,7 +473,11 @@ def open_manage_teams():
     manage_teams_window = tk.Toplevel(window)
     manage_teams_window.title("Manage Teams")
 
-    tk.Label(manage_teams_window, text="Select a Team to Manage:").pack()
+    guideline_text = ("Select a team from the list and use the checkboxes to manage team members.\n"
+                      "'Add Players to Team' will add the selected players to the team, up to 5 members.\n"
+                      "'Remove Selected Players from Team' will remove them.")
+    guideline_label = tk.Label(manage_teams_window, text=guideline_text, justify=tk.LEFT)
+    guideline_label.pack(pady=10)
 
     # listbox to display teams for selection
     teams_listbox = tk.Listbox(manage_teams_window)
@@ -354,16 +486,21 @@ def open_manage_teams():
     for team in teams.keys():
         teams_listbox.insert(tk.END, team)
 
-    #func to handle adding players to the selected team
+    # func to handle adding players to the selected team
     def add_players_to_team():
         selected_team_index = teams_listbox.curselection()
         if selected_team_index:
             selected_team = teams_listbox.get(selected_team_index[0])
             selected_players = [player for player, var in player_checkboxes.items() if var.get()]
             
+            # check if adding the selected players exceeds the limit of 5 members per team
+            if len(teams[selected_team]) + len(selected_players) > 5:
+                tk.messagebox.showerror("Error", "Cannot add more players. Each team can have only 5 members.") #error shown in the command line interface.
+                return
+            
             # add selected players to the selected team, avoiding duplicates
             updated_members = list(set(teams[selected_team] + selected_players))
-            teams[selected_team] = updated_members
+            teams[selected_team] = updated_members[:5]  # Ensure the team does not exceed 5 members
             
             display_individuals_and_teams()
 
@@ -377,7 +514,7 @@ def open_manage_teams():
             selected_team = teams_listbox.get(selected_team_index[0])
             selected_players = [player for player, var in player_checkboxes.items() if var.get()]
             
-            # remove selected players from the team
+            # Remove selected players from the team
             teams[selected_team] = [member for member in teams[selected_team] if member not in selected_players]
             
             display_individuals_and_teams()
@@ -399,15 +536,40 @@ def open_manage_teams():
     # button to remove selected players from the team
     tk.Button(manage_teams_window, text="Remove Selected Players from Team", command=remove_players_from_team).pack()
 
+#func that will give user guidlines and contanc info 
+def open_help():
+    help_window = tk.Toplevel(window)
+    help_window.title("Help and Contact Information")
+
+    info_text = ("Scoring System Help\n\n"
+                 "This Scoring System application allows you to manage tournaments, teams, and individual rankings.\n"
+                 "You can set up new tournaments, input player and team details, manage teams, and input ranking results.\n"
+                 "For detailed instructions on how to use each feature, please navigate to the corresponding section and check the notes.\n\n"
+                 "For feedback and repairs, please contact:\n"
+                 "Email: nazaruk7649@ukr.net\n"
+                 "Number: 07523703451")
+    info_label = tk.Label(help_window, text=info_text, justify=tk.LEFT)
+    info_label.pack(pady=10)
+
 # main window setup
 window = tk.Tk()
 window.title("Scoring System")
-window.geometry("900x750")  # the size can be changed easily here
+window.geometry("1100x900")  # the size can be changed easily here
 
 # menu frame
 main_menu_frame = tk.Frame(window, bg="white")
 main_menu_frame.pack(pady=100)
 
+
+# "Help" button
+help_button = tk.Button(main_menu_frame, text="Help", width=20, height=2,
+                         command=open_help)
+help_button.pack(pady=10)
+
+# "Start New Tournament" button
+set_button = tk.Button(main_menu_frame, text="Set Points System", width=20, height=2,
+                         command=set_points_system)
+set_button.pack(pady=10)
 
 # "Start New Tournament" button
 start_button = tk.Button(main_menu_frame, text="Start New Tournament", width=20, height=2,
@@ -417,6 +579,13 @@ start_button.pack(pady=10)
 # "Input Player and Teams" button
 input_names_button = tk.Button(main_menu_frame, text="Input Player and Teams ",width=20, height=2, command=input_player_names)
 input_names_button.pack(pady=10)
+
+assign_events_button = tk.Button(main_menu_frame, text="Assign Individuals to Events",width=20, height=2, command=assign_individuals_to_events)
+assign_events_button.pack(pady=10)
+
+show_button = tk.Button(main_menu_frame, text="Display Individuals And Teams", width=20, height=2,
+                         command=display_individuals_and_teams)
+show_button.pack(pady=10)
 
 # "Manage Teams" button
 manage_teams_button = tk.Button(main_menu_frame, text="Manage Teams", width=20, height=2, command=open_manage_teams)
