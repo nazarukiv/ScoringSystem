@@ -482,14 +482,18 @@ def open_results_individual():
         individual_results_table.heading(f'#{i+1}', text=heading)
         individual_results_table.column(f'#{i+1}', width=120, anchor='center')
 
-    # inserting random data into the table
-    for _ in range(15):  
+    individuals_data = []
+    for _ in range(MAX_INDIVIDUALS):  
         name = generate_random_names(1)[0]
         scores, ranks = generate_random_scores_and_ranks(5)
         sportsmanship = random.randint(1, 5)
-        total_points = sum(scores) + sportsmanship
-        final_rank = ranks[-1]
-        individual_results_table.insert('', 'end', values=(name, *ranks, sportsmanship, total_points, final_rank))
+        total_points = sum([rank_points[rank] for rank in ranks]) + sportsmanship
+        individuals_data.append((name, ranks, sportsmanship, total_points))
+
+    # sort individuals by total points and assign ranks
+    sorted_individuals = sorted(individuals_data, key=lambda x: x[3], reverse=True)
+    for rank, (name, ranks, sportsmanship, total_points) in enumerate(sorted_individuals, start=1):
+        individual_results_table.insert('', 'end', values=(name, *ranks, sportsmanship, total_points, f'R{rank}'))
 
     individual_results_table.pack()
 
@@ -511,15 +515,25 @@ def open_results_teams():
         teams_results_table.heading(f'#{i+1}', text=heading)
         teams_results_table.column(f'#{i+1}', width=120, anchor='center')
 
-    # data into table
-    for team_index in range(4):  
-        team_name = f'Team {chr(65 + team_index)}'  
-        members = ', '.join(random.sample(names, k=5))  
-        scores, ranks = generate_random_scores_and_ranks(5)  
+    all_individuals = generate_random_names(MAX_INDIVIDUALS)
+    shuffled_individuals = random.sample(all_individuals, len(all_individuals))
+    teams = {f'Team {chr(65+i)}': shuffled_individuals[i*5:(i+1)*5] for i in range(MAX_TEAMS)}
+
+    team_points_and_ranks = {}
+    for team_name, members in teams.items():
+        scores, ranks = generate_random_scores_and_ranks(5)
         sportsmanship = random.randint(1, 5)
-        total_points = sum(scores) + sportsmanship
-        final_rank = f'R{random.randint(1, 4)}'  
-        teams_results_table.insert('', 'end', values=(team_name, members, *ranks, sportsmanship, total_points, final_rank))
+        total_points = sum(rank_points[rank] for rank in ranks) + sportsmanship
+        team_points_and_ranks[team_name] = (members, ranks, sportsmanship, total_points)
+    
+    # sort teams by total points for final ranking
+    sorted_teams = sorted(team_points_and_ranks.items(), key=lambda item: item[1][3], reverse=True)
+    final_rankings = {team: index+1 for index, (team, _) in enumerate(sorted_teams)}
+
+    # insert sorted data into the table
+    for team_name, (members, ranks, sportsmanship, total_points) in sorted_teams:
+        final_rank = f'R{final_rankings[team_name]}'
+        teams_results_table.insert('', 'end', values=(team_name, ', '.join(members), *ranks, sportsmanship, total_points, final_rank))
 
     teams_results_table.pack()
 
