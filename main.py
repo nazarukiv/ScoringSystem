@@ -1,7 +1,10 @@
 import tkinter as tk
 from tkinter import ttk
+import random
+from tkinter import messagebox
 
 
+#----------------------------------------------------------------------------------------------------------------|
 # global variables to store ranking data
 individual_ranking_data = []  
 team_ranking_data = []        
@@ -15,24 +18,110 @@ individual_event_registrations = {}
 tournaments = []
 current_tournament_events = []
 
+# configuration of the style for the buttons
+style = ttk.Style()
+style.configure('Exit.TButton', font=('Helvetica', 12, 'bold'), foreground='red', anchor='s')
+
 # rank for teams and individuls
-rank_points = {
-    'R1': 10,
-    'R2': 8,
-    'R3': 6,
-    'R4': 4,
-    'R5': 2,
-    'R0': 0  
-}
+rank_points = {'R1': 10, 'R2': 8, 'R3': 6, 'R4': 4, 'R5': 2, 'R0': 0}
+match_outcomes = {'Win': 8, 'Draw': 4, 'Lose': 0}
+
+names = ['Oliver', 'Harry', 'George', 'Noah', 'Jack', 'Leo', 'Arthur', 'Muhammad', 'Oscar', 'Charlie',
+                 'Jacob', 'Thomas', 'Henry', 'Freddie', 'Alfie', 'Theo', 'William', 'James', 'Ethan', 'Archie',]
 
 team_sport_points = {'Win': 0, 'Draw': 0, 'Lose': 0}
 ranked_event_points = {'R1': 0, 'R2': 0, 'R3': 0, 'R4': 0, 'R5': 0}
 
-
 #max amount of teams and individuals
 MAX_TEAMS = 4
 MAX_INDIVIDUALS = 20 
+#----------------------------------------------------------------------------------------------------------------|
 
+
+
+
+#funcs for buttons logic
+#--------------------------------------------------------|
+
+def close_window_and_go_back(window):
+    """
+    Closes the current window. This simulates going back to the main menu.
+    
+    window: The window to close.
+    """
+    window.destroy()
+
+def create_back_button(window):
+    """
+    creates a styled "Back to Menu" button in the given window.
+    
+    window: The window where the button will be placed.
+    """
+    style = ttk.Style()
+    style.configure('Back.TButton', font=('Helvetica', 15, 'bold'), foreground='white')
+    
+    back_button = ttk.Button(window, text="Back to Menu", style='Back.TButton', command=lambda: close_window_and_go_back(window))
+    back_button.pack(pady=15)
+
+def exit_application():
+    """
+    closes the entire application safely.
+    """
+    window.quit()
+
+def update_individual_results():
+    print("Individual results refreshed.")
+
+def update_team_results():
+    print("Team results refreshed.")
+
+def close_points_window(points_window):
+    points_window.destroy()
+
+def create_refresh_button(window, update_function):
+    """
+    Creates a styled "Refresh" button in the given window.
+    
+    window: The window where the button will be placed.
+    update_function: The function to call when the button is clicked.
+    """
+    style = ttk.Style()
+    style.configure('Refresh.TButton', font=('Helvetica', 10, 'bold'), foreground='green')
+    
+    refresh_button = ttk.Button(window, text="Refresh", style='Refresh.TButton', command=update_function )
+    refresh_button.pack(pady=10)
+
+def generate_random_names(number_of_names):
+    return random.sample(names, number_of_names)
+
+def generate_random_scores_and_ranks(num_scores, max_score=5):
+    scores = [random.randint(1, max_score) for _ in range(num_scores)]
+    ranks = ['R' + str(score) for score in scores]
+    return scores, ranks
+
+def generate_random_events(num_events, max_score=10):
+    return [f'Event {i+1}' for i in range(num_events)]
+
+def generate_random_scores_and_ranks(num_scores, max_score=5):
+    scores = [random.randint(1, max_score) for _ in range(num_scores)]
+    ranks = ['R' + str(score) for score in scores]
+    return scores, ranks
+
+# convert rank to points func
+def assign_points(event_type, rank):
+    if event_type == 'team_sport':
+        return team_sport_points.get(rank, 0)
+    elif event_type == 'ranked_event':
+        return ranked_event_points.get(rank, 0)
+    else:
+        return rank_points.get(rank, 0)  
+#--------------------------------------------------------|
+
+
+
+#func for buttons and screens
+
+#--------------------------------------------------------#--------------------------------------------------------|
 # func to set up the dynamic point systems
 def set_points_system():
     points_window = tk.Toplevel(window)
@@ -84,7 +173,13 @@ def set_points_system():
         points_window.destroy()
 
     save_button = tk.Button(points_window, text="Save Points", command=save_points)
-    save_button.pack(pady=10)
+    save_button.pack(pady=15)
+    save_button.config(bg='green', fg='black', font=('Helvetica', 13, 'bold'))
+
+    # "Cancel" button
+    cancel_button = tk.Button(points_window, text="Cancel", command=lambda: close_points_window(points_window))
+    cancel_button.pack(pady=5)
+    cancel_button.config(bg='red', fg='blue', font=('Helvetica', 13, 'bold'))
 
 #func to setup a tournament
 def open_tournament_setup():
@@ -134,14 +229,14 @@ def open_tournament_setup():
             current_tournament['events'].append({
                 'name': event_name,
                 'type': event_type_selected,
-                'ranking_type': ranking_type_selected,
-                'for': event_for
+                'ranking_type': ranking_type,
+                'for': event_type
             })
             current_tournament_events.append({
                 'name': event_name,
                 'type': event_type_selected,
-                'ranking_type': ranking_type_selected,
-                'for': event_for
+                'ranking_type': ranking_type,
+                'for': event_type
             })
             event_table.insert('', 'end', values=(event_name, event_type_selected, ranking_type_selected, event_for))
 
@@ -159,16 +254,12 @@ def open_tournament_setup():
 
     tk.Label(setup_window, text="Event List", font=('Helvetica', 14)).pack()
 
-    columns = ('#1', '#2', '#3', '#4')
+    columns = ('#1', '#2')
     event_table = ttk.Treeview(setup_window, columns=columns, show='headings')
     event_table.heading('#1', text='Event Name')
     event_table.heading('#2', text='Event Type')
-    event_table.heading('#3', text='Ranking Type')
-    event_table.heading('#4', text='Individual/Team')
     event_table.column('#1', width=120, anchor='center')
     event_table.column('#2', width=120, anchor='center')
-    event_table.column('#3', width=120, anchor='center')
-    event_table.column('#4', width=120, anchor='center')
     event_table.pack()
 
     # append a new tournament dictionary if this is a new tournament
@@ -248,6 +339,73 @@ def open_individual_ranking():
     second_frame.update_idletasks()
     my_canvas.config(scrollregion=my_canvas.bbox("all"))
 
+#func for ranking for individuals
+def open_individual_ranking():
+    ranking_window = tk.Toplevel(window)
+    ranking_window.title("Individual Ranking Entry")
+
+    #main frame 
+    main_frame = tk.Frame(ranking_window)
+    main_frame.pack(fill=tk.BOTH, expand=1)
+    
+    my_canvas = tk.Canvas(main_frame)
+    my_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=1)
+    
+    my_scrollbar = ttk.Scrollbar(main_frame, orient=tk.VERTICAL, command=my_canvas.yview)
+    my_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+    
+    my_canvas.configure(yscrollcommand=my_scrollbar.set)
+    my_canvas.bind('<Configure>', lambda e: my_canvas.configure(scrollregion=my_canvas.bbox("all")))
+
+    second_frame = tk.Frame(my_canvas)
+    my_canvas.create_window((0, 0), window=second_frame, anchor="nw")
+
+    # dropdown to select the event
+    event_names = [event['name'] for event in current_tournament_events if event['type'] == 'individual']
+    selected_event = tk.StringVar()
+    event_dropdown = ttk.Combobox(second_frame, textvariable=selected_event, values=event_names, state="readonly")
+    event_dropdown.grid(row=0, column=1, padx=10, pady=5, sticky="ew")
+    if event_names:
+        selected_event.set(event_names[0])  
+    else:
+        event_dropdown['state'] = 'disabled'  # disable if no events
+
+    ranking_entries = []
+    for i, individual in enumerate(individuals, start=1):
+        tk.Label(second_frame, text=individual, anchor="w").grid(row=i, column=0, padx=10, pady=5, sticky="w")
+
+        rank_var = tk.StringVar(value='R0')
+        rank_dropdown = ttk.Combobox(second_frame, textvariable=rank_var, values=list(rank_points.keys()), state="readonly")
+        rank_dropdown.grid(row=i, column=1, padx=10, pady=5, sticky="ew")
+        ranking_entries.append((individual, rank_var))
+
+    # func to save rankings and points
+    def save_individual_ranking():
+        event_name = selected_event.get()
+        event_info = next((e for e in current_tournament_events if e['name'] == event_name), None)
+        if event_info:
+            for individual, rank_var in ranking_entries:
+                rank = rank_var.get()
+                points = assign_points(event_info['type'], rank)  # Use event type to assign points
+                individual_ranking_data.append({
+                    'name': individual,
+                    'event': event_name,
+                    'rank': rank,
+                    'points': points
+                })
+        
+        
+        ranking_window.destroy()
+
+    save_button = tk.Button(second_frame, text="Save Ranking", command=save_individual_ranking)
+    save_button.grid(row=len(individuals) + 1, column=1, pady=10)
+
+    
+    second_frame.update_idletasks()
+    my_canvas.config(scrollregion=my_canvas.bbox("all"))
+
+    create_back_button(ranking_window)
+
 #func for ranking for teams
 def open_team_ranking():
     ranking_window = tk.Toplevel(window)
@@ -307,38 +465,36 @@ def open_team_ranking():
     second_frame.update_idletasks()
     my_canvas.config(scrollregion=my_canvas.bbox("all"))
 
-# convert rank to points func
-def assign_points(event_type, rank):
-    if event_type == 'team_sport':
-        return team_sport_points.get(rank, 0)
-    elif event_type == 'ranked_event':
-        return ranked_event_points.get(rank, 0)
-    else:
-        return rank_points.get(rank, 0)  
+    create_back_button(ranking_window)
 
 #func to open results of individuals
 def open_results_individual():
     individual_results_window = tk.Toplevel(window)
     individual_results_window.title("Results by Event (Individual)")
 
-
     tk.Label(individual_results_window, text="Results by Event (Individual)", font=('Helvetica', 18, 'bold')).pack(pady=10)
 
-    #table for displaying results
-    columns = ('#1', '#2', '#3') 
+    # table for displaying results 
+    columns = ('#1', '#2', '#3', '#4', '#5', '#6', '#7', '#8', '#9')
     individual_results_table = ttk.Treeview(individual_results_window, columns=columns, show='headings')
-    individual_results_table.heading('#1', text='Player Name')
-    individual_results_table.heading('#2', text='Event Name')
-    individual_results_table.heading('#3', text='Score')
+    headings = ['Individual Name'] + generate_random_events(5) + ['Sportsmanship', 'Total Points', 'Final Rank']
+    for i, heading in enumerate(headings):
+        individual_results_table.heading(f'#{i+1}', text=heading)
+        individual_results_table.column(f'#{i+1}', width=120, anchor='center')
 
-    individual_results_table.column('#1', width=120, anchor='center')
-    individual_results_table.column('#2', width=200, anchor='center')
-    individual_results_table.column('#3', width=80, anchor='center')
-
-    for ranking in individual_ranking_data:
-        individual_results_table.insert('', 'end', values=(ranking['name'], ranking['event'], ranking['points']))
+    # inserting random data into the table
+    for _ in range(15):  
+        name = generate_random_names(1)[0]
+        scores, ranks = generate_random_scores_and_ranks(5)
+        sportsmanship = random.randint(1, 5)
+        total_points = sum(scores) + sportsmanship
+        final_rank = ranks[-1]
+        individual_results_table.insert('', 'end', values=(name, *ranks, sportsmanship, total_points, final_rank))
 
     individual_results_table.pack()
+
+    create_back_button(individual_results_window)
+    create_refresh_button(individual_results_window, update_individual_results)
 
 #func to open results of teams
 def open_results_teams():
@@ -347,21 +503,28 @@ def open_results_teams():
 
     tk.Label(teams_results_window, text="Results by Event (Teams)", font=('Helvetica', 18, 'bold')).pack(pady=10)
 
-    #table for displaying results
-    columns = ('#1', '#2', '#3')  
+    # table for displaying results with updated columns
+    columns = ('#1', '#2', '#3', '#4', '#5', '#6', '#7', '#8', '#9', '#10')
     teams_results_table = ttk.Treeview(teams_results_window, columns=columns, show='headings')
-    teams_results_table.heading('#1', text='Team Name')
-    teams_results_table.heading('#2', text='Event Name')
-    teams_results_table.heading('#3', text='Score')
+    headings = ['Team', 'Members'] + [f'Event {i+1}' for i in range(5)] + ['Sportsmanship Points', 'Total Points', 'Final Rank']
+    for i, heading in enumerate(headings):
+        teams_results_table.heading(f'#{i+1}', text=heading)
+        teams_results_table.column(f'#{i+1}', width=120, anchor='center')
 
-    teams_results_table.column('#1', width=120, anchor='center')
-    teams_results_table.column('#2', width=200, anchor='center')
-    teams_results_table.column('#3', width=80, anchor='center')
-
-    for ranking in team_ranking_data:
-        teams_results_table.insert('', 'end', values=(ranking['team'], ranking['event'], ranking['points']))
+    # data into table
+    for team_index in range(4):  
+        team_name = f'Team {chr(65 + team_index)}'  
+        members = ', '.join(random.sample(names, k=5))  
+        scores, ranks = generate_random_scores_and_ranks(5)  
+        sportsmanship = random.randint(1, 5)
+        total_points = sum(scores) + sportsmanship
+        final_rank = f'R{random.randint(1, 4)}'  
+        teams_results_table.insert('', 'end', values=(team_name, members, *ranks, sportsmanship, total_points, final_rank))
 
     teams_results_table.pack()
+
+    create_back_button(teams_results_window)
+    create_refresh_button(teams_results_window, update_team_results)
 
 #func to assigned individuals to specific event
 def assign_individuals_to_events():
@@ -404,6 +567,8 @@ def assign_individuals_to_events():
         assignment_window.destroy()
 
     tk.Button(assignment_window, text="Save Assignments", command=save_assignments).pack()
+
+    create_back_button(assignment_window)
 
 #func to input players for individuals section and names of teams(to future management in "Manage Team")
 def input_player_names():
@@ -467,6 +632,8 @@ def display_individuals_and_teams():
     for team_name in teams.keys():
         members_str = ", ".join(teams[team_name]) if teams[team_name] else "No members"
         tk.Label(teams_frame, text=f"Team {team_name}: Members: {members_str}").pack(anchor="w")
+    
+    create_back_button(display_window)
 
 #manage team func to add, delete and manage team members
 def open_manage_teams():
@@ -550,7 +717,9 @@ def open_help():
                  "Number: 07523703451")
     info_label = tk.Label(help_window, text=info_text, justify=tk.LEFT)
     info_label.pack(pady=10)
+#----------------------------------------------------------------------------------------------------------------|
 
+#--------------------------------------------------------|
 # main window setup
 window = tk.Tk()
 window.title("Scoring System")
@@ -559,8 +728,13 @@ window.geometry("1100x900")  # the size can be changed easily here
 # menu frame
 main_menu_frame = tk.Frame(window, bg="white")
 main_menu_frame.pack(pady=100)
+#--------------------------------------------------------|
 
 
+
+
+
+#----------------------------------------------------------------------------------------------------------------|
 # "Help" button
 help_button = tk.Button(main_menu_frame, text="Help", width=20, height=2,
                          command=open_help)
@@ -611,7 +785,12 @@ teams_results_button = tk.Button(main_menu_frame, text="Results by Event (Teams)
                                 command=open_results_teams)
 teams_results_button.pack(pady=10)
 
+# Create the Exit button with an icon and style
+exit_button = ttk.Button(window, text="Exit", style='Exit.TButton', command=exit_application)
+#exit_button = ttk.Button(window, text="Exit", style='Exit.TButton', image=exit_icon, compound=tk.LEFT, command=exit_application)  # can be used if photo uploaded
+exit_button.pack(side='bottom', anchor='w', padx=10, pady=10)
 
 
 # run the main loop
 window.mainloop()
+#----------------------------------------------------------------------------------------------------------------|
