@@ -2,8 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import random
 from tkinter import messagebox
-
-
+import pytest
 #----------------------------------------------------------------------------------------------------------------|
 # global variables to store ranking data
 individual_ranking_data = []  
@@ -733,6 +732,7 @@ def open_help():
     info_label.pack(pady=10)
 #----------------------------------------------------------------------------------------------------------------|
 
+
 #--------------------------------------------------------|
 # main window setup
 window = tk.Tk()
@@ -799,7 +799,7 @@ teams_results_button = tk.Button(main_menu_frame, text="Results by Event (Teams)
                                 command=open_results_teams)
 teams_results_button.pack(pady=10)
 
-# Create the Exit button with an icon and style
+# the Exit button with an icon and style
 exit_button = ttk.Button(window, text="Exit", style='Exit.TButton', command=exit_application)
 #exit_button = ttk.Button(window, text="Exit", style='Exit.TButton', image=exit_icon, compound=tk.LEFT, command=exit_application)  # can be used if photo uploaded
 exit_button.pack(side='bottom', anchor='w', padx=10, pady=10)
@@ -807,4 +807,38 @@ exit_button.pack(side='bottom', anchor='w', padx=10, pady=10)
 
 # run the main loop
 window.mainloop()
+#----------------------------------------------------------------------------------------------------------------|
+
+
+
+#tests for NON_GUI functions
+#----------------------------------------------------------------------------------------------------------------|
+def test_generate_random_names():
+    number_of_names = 5
+    result = generate_random_names(number_of_names)
+    assert len(result) == number_of_names  # check if the correct number of names are generated
+    assert len(set(result)) == number_of_names  # check if all names are unique
+
+def test_generate_random_scores_and_ranks():
+    num_scores = 5
+    max_score = 5
+    scores, ranks = generate_random_scores_and_ranks(num_scores, max_score)
+    assert len(scores) == num_scores
+    assert all(1 <= score <= max_score for score in scores)  # check if scores are within the correct range
+
+def test_assign_points_individual_sport():
+    assert assign_points('individual_sport', 'R1') == 10
+    assert assign_points('individual_sport', 'R2') == 8
+
+def test_assign_points_team_sport():
+    team_sport_points['Win'] = 3  
+    team_sport_points['Draw'] = 1  
+    assert assign_points('team_sport', 'Win') == 3
+    assert assign_points('team_sport', 'Draw') == 1
+
+
+# running the tests with pytest
+if __name__ == "__main__":
+    pytest.main()
+
 #----------------------------------------------------------------------------------------------------------------|
