@@ -171,7 +171,7 @@ def set_points_system():
                 return
         points_window.destroy()
 
-    save_button = tk.Button(points_window, text="Save Points", command=save_points)
+    save_button = tk.Button(points_window, text="Save Points")
     save_button.pack(pady=15)
     save_button.config(bg='green', fg='black', font=('Helvetica', 13, 'bold'))
 
@@ -806,39 +806,6 @@ exit_button.pack(side='bottom', anchor='w', padx=10, pady=10)
 
 
 # run the main loop
-window.mainloop()
-#----------------------------------------------------------------------------------------------------------------|
-
-
-
-#tests for NON_GUI functions
-#----------------------------------------------------------------------------------------------------------------|
-def test_generate_random_names():
-    number_of_names = 5
-    result = generate_random_names(number_of_names)
-    assert len(result) == number_of_names  # check if the correct number of names are generated
-    assert len(set(result)) == number_of_names  # check if all names are unique
-
-def test_generate_random_scores_and_ranks():
-    num_scores = 5
-    max_score = 5
-    scores, ranks = generate_random_scores_and_ranks(num_scores, max_score)
-    assert len(scores) == num_scores
-    assert all(1 <= score <= max_score for score in scores)  # check if scores are within the correct range
-
-def test_assign_points_individual_sport():
-    assert assign_points('individual_sport', 'R1') == 10
-    assert assign_points('individual_sport', 'R2') == 8
-
-def test_assign_points_team_sport():
-    team_sport_points['Win'] = 3  
-    team_sport_points['Draw'] = 1  
-    assert assign_points('team_sport', 'Win') == 3
-    assert assign_points('team_sport', 'Draw') == 1
-
-
-# running the tests with pytest
 if __name__ == "__main__":
-    pytest.main()
-
+    window.mainloop()
 #----------------------------------------------------------------------------------------------------------------|

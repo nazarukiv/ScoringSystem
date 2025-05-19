@@ -1,0 +1,9 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.0b3, pytest-8.0.2, pluggy-1.4.0 -- /Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12
+cachedir: .pytest_cache
+rootdir: /Users/ivan/Desktop/college/level 3 year 1/Assignment2_Programming/ScoringSystem
+plugins: anyio-4.3.0
+collecting ... collected 0 items
+
+============================ no tests ran in 0.00s =============================
+
